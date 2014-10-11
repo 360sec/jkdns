@@ -1,0 +1,121 @@
+{% extends "manage_nav.html" %}
+
+{% block js %}
+$(document).ready( function(){
+	$("#loading").show();
+
+	function getUrlParam(name){
+		var reg = new RegExp("(^|&)"+ name +"=([^&]*)(&|$)");
+		var r = window.location.search.substr(1).match(reg);
+		if (r!=null)
+			return unescape(r[2]);
+		return null;
+	}
+
+	var domain_id = getUrlParam('domain_id');
+	if ( domain_id != null ){
+		$("li[domain_id='"+domain_id+"']").addClass("active");
+	}
+
+	var record_list = "";
+	var line_list = "";
+	var line_list_option = "";
+
+	function update_record_f(tmp_record_list){
+		var html = "";
+		for (var i=0; i< tmp_record_list.length; i++){
+			record=tmp_record_list[i];
+			var name = record.name;
+			var value = record.value;
+			if ( name.length > 15 ){
+				name = name.substring(0,10) + "..." + name.substring(name.length-2, name.length)
+			}
+			if ( value.length > 15 ){
+				value = value.substring(0,10) + "..." +value.substring(value.length-2, value.length)
+			}
+
+			html = html + "<tr><td class='record_name_td' value='"+record.name+"'>"+name+"</td><td>"+record.type+"</td><td>"+record.line+"</td><td class='record_value_td' value='"+record.value+"'>"+value+"</td><td>"+record.ttl+"</td></tr>";
+		}
+
+		$("#record_list_tbody").html(html);
+		$("#loading").hide();
+	}
+	
+	function add_record_f(record){
+		var name = record.name;
+		var value = record.value;
+		if ( name.length > 15 ){
+			name = name.substring(0,10) + "..." + name.substring(name.length-2, name.length)
+		}
+		if ( value.length > 15 ){
+			value = value.substring(0,10) + "..." +value.substring(value.length-2, value.length)
+		}
+		html = "<tr><td class='record_name_td' value='"+record.name+"'>"+name+"</td><td>"+record.type+"</td><td>"+record.line+"</td><td class='record_value_td' value='"+record.value+"'>"+value+"</td><td>"+record.ttl+"</td></tr>";
+
+		$("#record_list_tbody").append(html);
+		$("#loading").hide();
+	}
+
+	$.post("/api/get_dns_record_by_domain_id_api", {domain_id:domain_id},
+		function(data){
+			if (data.success == "true") {
+				record_list = data.dns_record_list;
+				update_record_f(record_list)
+			}
+		},
+		"json"
+	);
+
+	$("#search_input").bind('input propertychange', function(){
+		var tmp_record_list="";
+		var search_text = $("#search_input").val();
+		$("#record_list_tbody").html("");
+		if ( search_text == "" ){
+			update_record_f(record_list)
+		}else{
+			for (var i=0; i< record_list.length; i++){
+				var name = record_list[i].name;
+				var value = record_list[i].value;
+				if ( name.indexOf(search_text) >= 0 ){
+					add_record_f(record_list[i])
+				}else if( value.indexOf(search_text) >= 0 ){
+					add_record_f(record_list[i])
+				}
+			}
+		}
+	});
+
+
+	var add_record_button_i = 0;
+});
+{% endblock %}
+
+{% block main_right %}
+<div id="loading"></div>
+
+<div class="col-md-10">
+	<h4 class="page-header"><a href="/manage/domain_list"><span class="glyphicon glyphicon-home"></span></a> > {{domain_info[1]}}</h4>
+	<div class="row">
+		<div class="col-md-3">
+		</div>
+		<div class="col-md-3 col-md-offset-6">
+			<input class="form-control col-ms-2" id="search_input" placeholder="快速查找记录">
+		</div>
+	</div>
+	<div class="row">
+		<table class="table .table-condensed">
+			<thead id="add_record_thead">
+				<tr>
+					<td>主机名</td>
+					<td>记录类型</td>
+					<td>线路类型</td>
+					<td>记录值</td>
+					<td>TTL</td>
+				</tr>
+			</thead>
+			<tbody id="record_list_tbody">
+			</tbody>
+		</table>
+	</div>
+</div>
+{% endblock %}

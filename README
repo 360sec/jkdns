@@ -1,0 +1,28 @@
+V1.1
+
+功能说明:
+1.管理dnspod服务
+2.管理bind服务
+3.有基于域名的权限控制
+4.支持用户通过本地验证及pa_sso单点登陆验证
+5.目前只验证了chrome浏览器的页面支持
+
+安装说明:
+1.安装flask
+2.配置mysql
+3.生成账号
+ 进入mysql jkdns表
+ insert into userinfo (username, md5_password) values ("test",md5("test"));
+4.添加域名列表
+ 添加本地bind类型域名
+ insert into domain (domain_name, type) values ("test.com","local_bind");
+ 添加dnspod类型域名
+ insert into domain (domain_name, type) values ("abc.com","dnspod");
+5.配置config.py文件
+6.启动
+ 使用python app.py启动或配置wsgi引用app.wsgi启动
+
+TO DO:
+1.增加ldap登陆验证
+2.开源pa_sso单点登陆平台
+ pa_sso单点登陆平台支持ldap验证，支持跨域验证

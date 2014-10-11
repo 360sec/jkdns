@@ -1,0 +1,364 @@
+{% extends "manage_nav.html" %}
+
+{% block js %}
+$(document).ready( function(){
+	$("#loading").show();
+
+	var domain_id = getUrlParam('domain_id');
+	if ( domain_id != null ){
+		$("li[domain_id='"+domain_id+"']").addClass("active");
+	}
+
+	var record_list = "";
+	var line_list = "";
+	var line_list_option = "";
+
+	$.post("/api/get_dns_record_by_domain_id_api", {domain_id:domain_id},
+		function(data){
+			if (data.success == "true") {
+				record_list = data.dns_record_list;
+				update_record_f(record_list)
+			}
+		},
+		"json"
+	);
+
+	function get_last_record(domain_id){
+		$.post("/api/get_dns_record_by_domain_id_api", {domain_id:domain_id},
+			function(data){
+				if (data.success == "true") {
+					record_list = data.dns_record_list;
+				}
+			},
+			"json"
+		);
+	}
+
+	function getUrlParam(name){
+		var reg = new RegExp("(^|&)"+ name +"=([^&]*)(&|$)");
+		var r = window.location.search.substr(1).match(reg);
+		if (r!=null)
+			return unescape(r[2]);
+		return null;
+	}
+	
+	function update_record_f(tmp_record_list){
+		var html = "";
+		for (var i=0; i< tmp_record_list.length; i++){
+			record=tmp_record_list[i];
+			var name = record.name;
+			var value = record.value;
+			if ( name.length > 20 ){
+				name = name.substring(0,15) + "..." + name.substring(name.length-2, name.length)
+			}
+			if ( value.length > 20 ){
+				value = value.substring(0,15) + "..." +value.substring(value.length-2, value.length)
+			}
+
+			var caozuo = "";
+			if ( record.state == "1" ){
+				html = html+"<tr class='record_tr' record_state='1' record_id='"+record.id+"'>";
+				caozuo = "<a value='"+record.id+"' class='del_record'>删除</a> <a value='"+record.id+"' class='stop_record'>暂停</a>";
+			}else{
+				html = html+"<tr class='record_tr active' record_state='0' record_id='"+record.id+"'>";
+				caozuo = "<a value='"+record.id+"' class='del_record'>删除</a> <a value='"+record.id+"' class='start_record'>启动</a>";
+			}
+
+			html = html + "<td><input type='checkbox' class='checkbox_record' value='"+record.id+"'></td><td class='record_name_td record_click' value='"+record.name+"'>"+name+"</td><td class='record_click'>"+record.type+"</td><td class='record_click'>"+record.line+"</td><td class='record_value_td record_click' value='"+record.value+"'>"+value+"</td><td class='record_click'>"+record.ttl+"</td><td>"+caozuo+"</td></tr>";
+		}
+
+		$("#record_list_tbody").html(html);
+		$("#loading").hide();
+
+	}
+
+	function add_record_f(record){
+		var name = record.name;
+		var value = record.value;
+		if ( name.length > 20 ){
+			name = name.substring(0,15) + "..." + name.substring(name.length-2, name.length)
+		}
+		if ( value.length > 20 ){
+			value = value.substring(0,15) + "..." +value.substring(value.length-2, value.length)
+		}
+		var caozuo = "";
+		var html = "";
+		if (record.state == "1" ){
+			html = html+"<tr class='record_tr' record_state='1' record_id='"+record.id+"'>";
+			caozuo = "<a value='"+record.id+"' class='del_record'>删除</a> <a value='"+record.id+"' class='stop_record'>暂停</a>";
+		}else{
+			html = html+"<tr class='record_tr active' record_state='0' record_id='"+record.id+"'>";
+			caozuo = "<a value='"+record.id+"' class='del_record'>删除</a> <a value='"+record.id+"' class='start_record'>启动</a>";
+		}
+		html = html + "<td><input type='checkbox' class='checkbox_record' value='"+record.id+"'></td><td class='record_name_td record_click' value='"+record.name+"'>"+name+"</td><td class='record_click'>"+record.type+"</td><td class='record_click'>"+record.line+"</td><td class='record_value_td record_click' value='"+record.value+"'>"+value+"</td><td class='record_click'>"+record.ttl+"</td><td>"+caozuo+"</td></tr>";
+
+		$("#record_list_tbody").append(html);
+		$("#loading").hide();
+	}
+
+	$(".stop_record").live('click', function(){
+		if (event.type == "click"){
+			$("#loading").show();
+			var tmp_this_button = this;
+			var record_id = $(this).attr("value");
+			$.post("/manage/stop_record_api", {domain_id:domain_id, record_id:record_id},
+				function(data){
+					if (data.success == "true") {
+						$(tmp_this_button).parent().html("<a value='"+record_id+"' class='del_record'>删除</a> <a value='"+record_id+"' class='start_record'>启动</a>");
+						$(".record_tr[record_id='"+record_id+"']").addClass("active");
+						get_last_record(domain_id)
+					}else{
+						alert(data.msg);
+					}
+				},
+				"json"
+			);
+			$("#loading").hide();
+		}
+	});
+
+	$(".start_record").live('click', function(){
+		if (event.type == "click"){
+			$("#loading").show();
+			var tmp_this_button = this;
+			var record_id = $(this).attr("value");
+			$.post("/manage/start_record_api", {domain_id:domain_id, record_id:record_id},
+				function(data){
+					if (data.success == "true") {
+						$(tmp_this_button).parent().html("<a value='"+record_id+"' class='del_record'>删除</a> <a value='"+record_id+"' class='stop_record'>暂停</a>");
+						$(".record_tr[record_id='"+record_id+"']").removeClass("active");
+						get_last_record(domain_id)
+					}else{
+						alert(data.msg);
+					}
+				},
+				"json"
+			);
+			$("#loading").hide();
+		}
+	});
+
+	$(".del_record").live('click', function(){
+		if (event.type == "click"){
+			if ( confirm("确定删除记录?") ){
+				$("#loading").show();
+				var tmp_this_button = this;
+				var record_id = $(this).attr("value");
+				$.post("/manage/del_record_api", {domain_id:domain_id, record_id:record_id},
+					function(data){
+						if (data.success == "true") {
+							$(tmp_this_button).parent().parent().remove();
+							get_last_record(domain_id)
+						}else{
+							alert(data.msg);
+						}
+					},
+					"json"
+				);
+				$("#loading").hide();
+			}else{
+				console.log("not del record");
+			}
+		}
+	});
+
+
+	$.post("/api/get_domain_line_list_by_domain_id_api", {domain_id:domain_id},
+		function(data){
+			if (data.success == "true") {
+				line_list = data.domain_line_list;
+				for (var i=0; i< line_list.length; i++){
+					line=line_list[i];
+					line_list_option = line_list_option+"<option value='"+line+"'>"+line+"</option>";
+				}
+			}
+		},
+		"json"
+	);
+
+
+	$("#search_input").live('input propertychange', function(){
+		var tmp_record_list="";
+		var search_text = $("#search_input").val();
+		$("#record_list_tbody").html("");
+		if ( search_text == "" ){
+			update_record_f(record_list)
+		}else{
+			for (var i=0; i< record_list.length; i++){
+				var name = record_list[i].name;
+				var value = record_list[i].value;
+				if ( name.indexOf(search_text) >= 0 ){
+					add_record_f(record_list[i])
+				}else if( value.indexOf(search_text) >= 0 ){
+					add_record_f(record_list[i])
+				}
+			}
+		}
+	});
+
+	var update_record_i = 0;
+
+	$(".record_click").live('click', function(){
+		var record_id = $(this).attr("record_id");
+		var tmp_tr = $(this).parent();
+		var name = tmp_tr.children('td').eq(1).attr("value");
+		var type = tmp_tr.children('td').eq(2).html();
+		var line = tmp_tr.children('td').eq(3).html();
+		var value = tmp_tr.children('td').eq(4).attr("value");
+		var ttl = tmp_tr.children('td').eq(5).html();
+		var html = "<td></td>";
+		html = html + "<td><input class='update_record_name form-control' update_record_i='"+update_record_i+"' old_value='"+name+"' value='"+name+"'></input></td>";
+		html = html + "<td><select class='update_record_type form-control' update_record_i='"+update_record_i+"' style='width:80px' old_value='"+type+"'><option value='"+type+"'>"+type+"</option><option value='A'>A</option><option value='CNAME'>CNAME</option><option value='MX'>MX</option></select></td>";
+		html = html + "<td><select class='update_record_line form-control' update_record_i='"+update_record_i+"' style='width:80px' old_value='"+line+"'><option value='"+line+"'>"+line+"</option>"+line_list_option+"</select></td>";
+		html = html + "<td><input class='update_record_value form-control' update_record_i='"+update_record_i+"' style='width:150px' old_value='"+value+"' value='"+value+"'></input></td>";
+		html = html + "<td><input class='update_record_ttl form-control' update_record_i='"+update_record_i+"' style='width:60px' old_value='"+ttl+"' value='"+ttl+"'></input></td>";
+		html = html + "<td><button update_record_i='"+update_record_i+"' type='button' class='btn btn-info btn-sm update_record_button'>保存</button> <button update_record_i='"+update_record_i+"' type='button' class='btn btn-info btn-sm cancel_update_record_button'>取消</button></td>"
+
+		tmp_tr.html(html);
+		tmp_tr.removeClass("record_tr");
+		tmp_tr.addClass("update_record_tr");
+		update_record_i = update_record_i+1;
+	});
+
+	$(".cancel_update_record_button").live('click', function(){
+		var tmp_tr = $(this).parent().parent();
+		var record_id = tmp_tr.attr("record_id");
+		var record_state = tmp_tr.attr("record_state");
+		var tmp_update_record_i = $(this).attr("update_record_i");
+		var name = $(".update_record_name[update_record_i='"+tmp_update_record_i+"']").attr("old_value");
+		var type = $(".update_record_type[update_record_i='"+tmp_update_record_i+"']").attr("old_value");
+		var line = $(".update_record_line[update_record_i='"+tmp_update_record_i+"']").attr("old_value");
+		var value = $(".update_record_value[update_record_i='"+tmp_update_record_i+"']").attr("old_value");
+		var ttl = $(".update_record_ttl[update_record_i='"+tmp_update_record_i+"']").attr("old_value");
+		var html = "";
+		var caozuo = "";
+
+		if ( record_state == "1" ){
+			caozuo = "<a value='"+record_id+"' class='del_record'>删除</a> <a value='"+record_id+"' class='stop_record'>暂停</a>";
+		}else{
+			caozuo = "<a value='"+record_id+"' class='del_record'>删除</a> <a value='"+record_id+"' class='start_record'>启动</a>";
+		}
+
+		html = "<td><input type='checkbox' class='checkbox_record' value='"+record_id+"'></td><td class='record_name_td record_click' value='"+name+"'>"+name+"</td><td class='record_click'>"+type+"</td><td class='record_click'>"+line+"</td><td class='record_value_td record_click' value='"+value+"'>"+value+"</td><td class='record_click'>"+ttl+"</td><td>"+caozuo+"</td>";
+		tmp_tr.addClass("record_tr");
+		tmp_tr.html(html);
+		get_last_record(domain_id);
+
+	});
+
+	$(".update_record_button").live('click', function(){
+		var tmp_tr = $(this).parent().parent();
+		var record_id = tmp_tr.attr("record_id");
+		var record_state = tmp_tr.attr("record_state");
+		var tmp_update_record_i = $(this).attr("update_record_i");
+		var name = $(".update_record_name[update_record_i='"+tmp_update_record_i+"']").attr("value");
+		var type = $(".update_record_type[update_record_i='"+tmp_update_record_i+"']").attr("value");
+		var line = $(".update_record_line[update_record_i='"+tmp_update_record_i+"']").attr("value");
+		var value = $(".update_record_value[update_record_i='"+tmp_update_record_i+"']").attr("value");
+		var ttl = $(".update_record_ttl[update_record_i='"+tmp_update_record_i+"']").attr("value");
+
+		$.post("/manage/update_record_api", {domain_id:domain_id, record_id:record_id, name:name, type:type, line:line, value:value, ttl:ttl},
+			function(data){
+				console.log(data);
+				if (data.success == "true") {
+				var html = "";
+				var caozuo = "";
+					if ( record_state == "1" ){
+						caozuo = "<a value='"+record_id+"' class='del_record'>删除</a> <a value='"+record_id+"' class='stop_record'>暂停</a>";
+					}else{
+						caozuo = "<a value='"+record_id+"' class='del_record'>删除</a> <a value='"+record_id+"' class='start_record'>启动</a>";
+					}
+					html = "<td><input type='checkbox' class='checkbox_record' value='"+record_id+"'></td><td class='record_name_td record_click' value='"+name+"'>"+name+"</td><td class='record_click'>"+type+"</td><td class='record_click'>"+line+"</td><td class='record_value_td record_click' value='"+value+"'>"+value+"</td><td class='record_click'>"+ttl+"</td><td>"+caozuo+"</td>";
+					tmp_tr.addClass("record_tr");
+					tmp_tr.html(html);
+				}else{
+					alert(data.msg);
+				}
+			},
+			"json"
+		);
+		get_last_record(domain_id);
+
+	});
+
+	var add_record_button_i = 0;
+
+	$("#add_record_button").click(function(){
+		var add_html = "<tr add_record_button_i='"+add_record_button_i+"' class='add_record_tr'><td></td><td><input style='width:180px' class='form-control' add_class='add_record_name_input'></input></td>";
+		add_html = add_html+"<td><select add_record_button_i='"+add_record_button_i+"' style='width:80px' class='form-control' add_class='add_record_type_select'><option value='A'>A</option><option value='CNAME'>CNAME</option><option value='MX'>MX</option></select></td>";
+		add_html = add_html+"<td><select add_record_button_i='"+add_record_button_i+"' style='width:80px' class='form-control' add_class='add_record_line_select'>"+line_list_option+"</select></td>";
+		add_html = add_html+"<td><input add_record_button_i='"+add_record_button_i+"' style='width:150px' class='form-control' add_class='add_record_value_input'></input></td>";
+		add_html = add_html+"<td><input add_record_button_i='"+add_record_button_i+"' style='width:60px' class='form-control' add_class='add_record_ttl_input' value='600'></input></td>";
+		add_html = add_html+"<td><button add_record_button_i='"+add_record_button_i+"' type='button' class='btn btn-info btn-sm add_add_record_button'>保存</button> <button add_record_button_i='"+add_record_button_i+"' type='button' class='btn btn-info btn-sm del_add_record_button'>取消</button></td>"
+		add_html = add_html+"</tr>";
+		$("#record_list_tbody").prepend(add_html);
+		add_record_button_i = add_record_button_i+1;
+
+		$(".del_add_record_button").click(function(){
+			$(this).parent().parent().remove();
+		});
+
+		$(".add_add_record_button").click(function(){
+			var tmp_this_button = this;
+			var tmp_add_record_button_i = $(this).attr("add_record_button_i");
+			var name = $("[add_record_button_i='"+tmp_add_record_button_i+"'] [add_class='add_record_name_input']").attr("value");
+			var type = $("[add_record_button_i='"+tmp_add_record_button_i+"'] [add_class='add_record_type_select']").attr("value");
+			var line  = $("[add_record_button_i='"+tmp_add_record_button_i+"'] [add_class='add_record_line_select']").attr("value");
+			var value = $("[add_record_button_i='"+tmp_add_record_button_i+"'] [add_class='add_record_value_input']").attr("value");
+			var ttl = $("[add_record_button_i='"+tmp_add_record_button_i+"'] [add_class='add_record_ttl_input']").attr("value");
+			$.post("/manage/add_record_api", {domain_id:domain_id, name:name, type:type, line:line, value:value, ttl:ttl},
+				function(data){
+					if (data.success == "true") {
+						var record_id = data.msg;
+						var caozuo = "<a value='"+record_id+"' class='del_record'>删除</a> <a value='"+record_id+"' class='stop_record'>暂停</a>";
+						var html = "<tr  class='record_tr' record_state='1' record_id='"+record_id+"'><td><input type='checkbox' class='checkbox_record' value='"+record_id+"'></td><td class='record_name_td record_click' value='"+name+"'>"+name+"</td><td class='record_click'>"+record.type+"</td><td>"+line+"</td><td class='record_value_td record_click' value='"+value+"'>"+value+"</td><td class='record_click'>"+ttl+"</td><td>"+caozuo+"</td></tr>";
+						$(".add_record_tr").last().after(html)
+						$(tmp_this_button).parent().parent().remove();
+						get_last_record(domain_id)
+					}else{
+						alert(data.msg);
+					}
+				},
+				"json"
+			);
+
+		});
+	});
+
+});
+
+{% endblock %}
+
+{% block main_right %}
+
+<div id="loading"></div>
+
+<div class="col-md-10">
+	<h4 class="page-header"><a href="/manage/domain_list"><span class="glyphicon glyphicon-home"></span></a> > {{domain_info[1]}}</h4>
+	<div class="row">
+		<div class="col-md-3">
+			<button id="add_record_button" type="button" class="btn btn-success btn-sm">添加记录</button>
+		</div>
+		<div class="col-md-3 col-md-offset-6">
+			<input class="form-control col-ms-2" id="search_input" placeholder="快速查找记录">
+		</div>
+	</div>
+	<div class="row">
+		<table class="table table-condensed table-hover">
+			<thead id="add_record_thead">
+				<tr>
+					<td><input type="checkbox" id="all_checkbox"></td>
+					<td>主机名</td>
+					<td>记录类型</td>
+					<td>线路类型</td>
+					<td>记录值</td>
+					<td>TTL</td>
+					<td>操作</td>
+				</tr>
+			</thead>
+			<tbody id="record_list_tbody">
+			</tbody>
+		</table>
+	</div>
+</div>
+{% endblock %}

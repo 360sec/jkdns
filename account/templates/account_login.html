@@ -1,0 +1,70 @@
+{% extends "account_nav.html" %}
+
+{% block js %}
+$(document).ready( function(){
+	$("#warning_div").hide();
+
+	function login_f(){
+		var username = $("#username_input").attr("value");
+		var password = $("#password_input").attr("value");
+		$.post("/account/login_api",{username:username, password:password},
+			function(data){
+				if (data.success=="true"){
+					location.reload();
+				}else{
+					$("#warning_div").hide();
+					var warning_message=data.msg;
+					$("#warning_text").html( warning_message);
+					$("#warning_div").fadeIn("slow");
+				}
+			},
+			"json"
+		);
+	}
+
+	$("#login_button").click( function(){
+		login_f();
+	});
+
+	$("#password_input").bind('keypress', function(event){
+		if(event.keyCode == "13"){
+			login_f();
+		}
+	});
+
+});
+
+{% endblock %}
+
+{% block main_left %}
+{% endblock %}
+
+{% block main_right %}
+<div class="col-md-6">
+	<div class="form-horizontal" role="form">
+		<div class="form-group">
+			<label for="username_input" class="col-sm-2 control-label">用户名</label>
+			<div class="col-sm-10">
+				<input type="text" class="form-control" id="username_input" placeholder="Username">
+			</div>
+		</div>
+		<div class="form-group">
+			<label for="password_input" class="col-sm-2 control-label">密码</label>
+			<div class="col-sm-10">
+				<input type="password" class="form-control" id="password_input" placeholder="Password">
+			</div>
+		</div>
+		<div class="form-group">
+			<div class="col-sm-offset-2 col-sm-10">
+				<button id="login_button" class="btn btn-default">Sign in</button>
+			</div>
+		</div>
+		<div class="form-group">
+			<div id="warning_div" class="alert alert-warning alert-dismissible fade in" role="alert">
+				<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+				<p id="warning_text"><p>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
