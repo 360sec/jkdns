@@ -21,6 +21,8 @@ V1.1
 5.配置config.py文件
 6.启动
  使用python app.py启动或配置wsgi引用app.wsgi启动
+7.增加用户管理的域名
+ insert into user_domain (user_id, domain_id) values (user_id, domain_id);
 
 TO DO:
 1.增加ldap登陆验证
